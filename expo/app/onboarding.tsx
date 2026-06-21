@@ -8,6 +8,7 @@ import {
   Animated,
   FlatList,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -129,7 +130,16 @@ export default function OnboardingScreen() {
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom + 20 }]}>
       <View style={styles.topBar}>
-        <View />
+        <View style={styles.brandRow}>
+          <Image
+            source={require('@/assets/images/icon.png')}
+            style={styles.brandMark}
+            resizeMode="contain"
+          />
+          <Text style={styles.brandWordmark}>
+            Laundry<Text style={styles.brandWordmarkAccent}> Dispatch</Text>
+          </Text>
+        </View>
         <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
@@ -229,6 +239,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600' as const,
     color: Colors.textSecondary,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  brandMark: {
+    width: 32,
+    height: 32,
+  },
+  brandWordmark: {
+    fontSize: 17,
+    fontWeight: '800' as const,
+    color: Colors.text,
+    letterSpacing: 0.2,
+  },
+  brandWordmarkAccent: {
+    color: Colors.primary,
   },
   slide: {
     width: SCREEN_WIDTH,
