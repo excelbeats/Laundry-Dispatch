@@ -6,9 +6,10 @@ import { createClient } from '@supabase/supabase-js';
 // app bundle, and all data access is gated by Row Level Security. Env vars override
 // these (for local dev / other projects), but the fallback guarantees the app boots
 // even where env vars weren't configured (e.g. the Vercel build).
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://bvmgedwwsjeksvykzwak.supabase.co';
+// Use `||` (not `??`) so a blank/empty env var also falls back to these public values.
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://bvmgedwwsjeksvykzwak.supabase.co';
 const supabaseAnonKey =
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_UwuhlnTg3IHmA0eHb9QE5w_ClwtZAR7';
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_UwuhlnTg3IHmA0eHb9QE5w_ClwtZAR7';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
