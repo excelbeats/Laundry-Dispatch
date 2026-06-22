@@ -16,6 +16,7 @@ interface AppState {
   setUserRole: (role: UserRole) => void;
   setHasOnboarded: (value: boolean) => void;
   addOrder: (order: Order) => void;
+  claimOrder: (orderId: string) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   markNotificationRead: (id: string) => void;
   unreadCount: number;
@@ -168,6 +169,19 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orders', userId] }),
   });
 
+  const claimMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      if (!userId) throw new Error('Not signed in');
+      const { error } = await supabase
+        .from('orders')
+        .update({ driver_id: userId, status: 'driver_assigned' })
+        .eq('id', orderId);
+      if (error) throw error;
+      await supabase.from('order_status_history').insert({ order_id: orderId, status: 'driver_assigned' });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['orders', userId] }),
+  });
+
   const markReadMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
@@ -197,6 +211,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   });
 
   const addOrder = useCallback((order: Order) => addOrderMutation.mutate(order), [addOrderMutation]);
+  const claimOrder = useCallback((orderId: string) => claimMutation.mutate(orderId), [claimMutation]);
   const updateOrderStatus = useCallback(
     (orderId: string, status: Order['status']) => updateStatusMutation.mutate({ orderId, status }),
     [updateStatusMutation],
@@ -224,6 +239,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       setUserRole: noop,
       setHasOnboarded: noop,
       addOrder,
+      claimOrder,
       updateOrderStatus,
       markNotificationRead,
       unreadCount,
@@ -238,6 +254,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       userRole,
       noop,
       addOrder,
+      claimOrder,
       updateOrderStatus,
       markNotificationRead,
       unreadCount,

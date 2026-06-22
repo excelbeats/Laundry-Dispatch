@@ -310,6 +310,10 @@ grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant usage on sequence public.order_seq to authenticated;
 
+-- Prevent users from changing their own role (privilege escalation). Role is set
+-- by the signup trigger (SECURITY DEFINER) or by an admin via a privileged path.
+revoke update (role) on public.profiles from authenticated;
+
 -- ---------- Seed: service catalog ----------
 insert into public.services (id, name, description, price_per_pound, icon, color, estimated_hours) values
   ('wash_fold','Wash & Fold','Standard wash, dry, and fold service',1.99,'shirt','#0B5E8A',24),
