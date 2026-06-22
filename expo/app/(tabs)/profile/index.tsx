@@ -29,6 +29,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/hooks/useAppState';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MenuItem {
   icon: React.ComponentType<{ size: number; color: string }>;
@@ -42,7 +43,9 @@ interface MenuItem {
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { userName, orders, addresses, setUserRole } = useAppState();
+  const { orders, addresses, setUserRole } = useAppState();
+  const { profile, signOut } = useAuth();
+  const userName = profile?.name || 'there';
 
   const completedOrders = orders.filter(o => o.status === 'delivered').length;
   const defaultAddress = addresses.find(a => a.isDefault);
@@ -192,7 +195,7 @@ export default function ProfileScreen() {
             </LinearGradient>
           </View>
           <Text style={styles.profileName}>{userName}</Text>
-          <Text style={styles.profileEmail}>alex@laundrydispatch.com</Text>
+          <Text style={styles.profileEmail}>{profile?.email ?? ''}</Text>
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -227,7 +230,12 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => Alert.alert('Logout', 'Are you sure you want to logout?')}
+          onPress={() =>
+            Alert.alert('Log Out', 'Are you sure you want to log out?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Log Out', style: 'destructive', onPress: () => { void signOut(); } },
+            ])
+          }
         >
           <LogOut size={18} color={Colors.error} />
           <Text style={styles.logoutText}>Log Out</Text>
