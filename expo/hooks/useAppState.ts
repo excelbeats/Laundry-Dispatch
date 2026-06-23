@@ -16,6 +16,8 @@ interface AppState {
   setUserRole: (role: UserRole) => void;
   setHasOnboarded: (value: boolean) => void;
   addOrder: (order: Order) => void;
+  addOrderAsync: (order: Order) => Promise<string>;
+  startCheckout: (orderId: string) => Promise<string | null>;
   claimOrder: (orderId: string) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   markNotificationRead: (id: string) => void;
@@ -153,9 +155,9 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
         .select('id')
         .single();
       if (error) throw error;
-      if (data?.id) {
-        await supabase.from('order_status_history').insert({ order_id: data.id, status: 'placed' });
-      }
+      if (!data?.id) throw new Error('Order could not be created');
+      await supabase.from('order_status_history').insert({ order_id: data.id, status: 'placed' });
+      return data.id as string;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orders', userId] }),
   });
@@ -211,6 +213,12 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
   });
 
   const addOrder = useCallback((order: Order) => addOrderMutation.mutate(order), [addOrderMutation]);
+  const addOrderAsync = useCallback((order: Order) => addOrderMutation.mutateAsync(order), [addOrderMutation]);
+  const startCheckout = useCallback(async (orderId: string) => {
+    const { data, error } = await supabase.functions.invoke('create-checkout', { body: { order_id: orderId } });
+    if (error) throw error;
+    return ((data as { url?: string } | null)?.url) ?? null;
+  }, []);
   const claimOrder = useCallback((orderId: string) => claimMutation.mutate(orderId), [claimMutation]);
   const updateOrderStatus = useCallback(
     (orderId: string, status: Order['status']) => updateStatusMutation.mutate({ orderId, status }),
@@ -239,6 +247,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       setUserRole: noop,
       setHasOnboarded: noop,
       addOrder,
+      addOrderAsync,
+      startCheckout,
       claimOrder,
       updateOrderStatus,
       markNotificationRead,
@@ -254,6 +264,8 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       userRole,
       noop,
       addOrder,
+      addOrderAsync,
+      startCheckout,
       claimOrder,
       updateOrderStatus,
       markNotificationRead,

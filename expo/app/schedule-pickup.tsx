@@ -8,6 +8,7 @@ import {
   TextInput,
   Platform,
   Alert,
+  Linking,
   KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -31,7 +32,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/hooks/useAppState';
-import { notifyThen } from '@/lib/dialog';
+import { notify, notifyThen } from '@/lib/dialog';
 import { mockServices, mockTimeSlots } from '@/mocks/data';
 import { ServiceType, TimeSlot, Order } from '@/types';
 
@@ -39,9 +40,12 @@ type Step = 'address' | 'services' | 'schedule' | 'review';
 
 const STEPS: Step[] = ['address', 'services', 'schedule', 'review'];
 
+// Pickup fee ($3.99) + service fee ($1.50), added on top of the laundry subtotal.
+const FEES = 5.49;
+
 export default function SchedulePickupScreen() {
   const router = useRouter();
-  const { addresses, addOrder } = useAppState();
+  const { addresses, addOrderAsync, startCheckout } = useAppState();
 
   const [currentStep, setCurrentStep] = useState<Step>('address');
   const [selectedAddressId, setSelectedAddressId] = useState<string>(
@@ -56,6 +60,7 @@ export default function SchedulePickupScreen() {
   const [selectedPickupSlot, setSelectedPickupSlot] = useState<string>('');
   const [selectedDeliverySlot, setSelectedDeliverySlot] = useState<string>('');
   const [promoCode, setPromoCode] = useState<string>('');
+  const [placing, setPlacing] = useState<boolean>(false);
 
   const stepIndex = STEPS.indexOf(currentStep);
 
@@ -104,45 +109,66 @@ export default function SchedulePickupScreen() {
     }
   }, [currentStep, selectedAddressId, selectedServices, selectedPickupSlot]);
 
+  const placeOrderAndPay = useCallback(async () => {
+    const pickupAddr = addresses.find(a => a.id === selectedAddressId) ?? addresses[0];
+    const deliveryAddr = addresses.find(a => a.id === deliveryAddressId) ?? pickupAddr;
+    const pickupSlot = mockTimeSlots.find(s => s.id === selectedPickupSlot) ?? mockTimeSlots[0];
+    const deliverySlot = mockTimeSlots.find(s => s.id === selectedDeliverySlot);
+
+    const newOrder: Order = {
+      id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+      customerId: 'user_1',
+      status: 'placed',
+      services: selectedServices,
+      pickupAddress: pickupAddr,
+      deliveryAddress: deliveryAddr,
+      pickupSlot: pickupSlot,
+      deliverySlot: deliverySlot,
+      estimatedPounds,
+      specialInstructions: specialInstructions || undefined,
+      estimatedPrice: estimatedPrice + FEES,
+      promoCode: promoCode || undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      statusHistory: [
+        { status: 'placed', timestamp: new Date().toISOString() },
+      ],
+    };
+
+    try {
+      setPlacing(true);
+      const orderId = await addOrderAsync(newOrder);
+      const url = await startCheckout(orderId);
+      if (!url) {
+        notifyThen('Order placed', "Your order is in — we couldn't open checkout, you can pay from your orders.", () => router.back());
+        return;
+      }
+      if (Platform.OS === 'web') {
+        window.location.href = url;
+      } else {
+        await Linking.openURL(url);
+        router.back();
+      }
+    } catch (e) {
+      notify('Could not place order', (e as Error).message);
+    } finally {
+      setPlacing(false);
+    }
+  }, [addresses, selectedAddressId, deliveryAddressId, selectedPickupSlot, selectedDeliverySlot, selectedServices, estimatedPounds, specialInstructions, estimatedPrice, promoCode, addOrderAsync, startCheckout, router]);
+
   const handleNext = useCallback(() => {
     if (Platform.OS !== 'web') {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     if (currentStep === 'review') {
-      const pickupAddr = addresses.find(a => a.id === selectedAddressId) ?? addresses[0];
-      const deliveryAddr = addresses.find(a => a.id === deliveryAddressId) ?? pickupAddr;
-      const pickupSlot = mockTimeSlots.find(s => s.id === selectedPickupSlot) ?? mockTimeSlots[0];
-      const deliverySlot = mockTimeSlots.find(s => s.id === selectedDeliverySlot);
-
-      const newOrder: Order = {
-        id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-        customerId: 'user_1',
-        status: 'placed',
-        services: selectedServices,
-        pickupAddress: pickupAddr,
-        deliveryAddress: deliveryAddr,
-        pickupSlot: pickupSlot,
-        deliverySlot: deliverySlot,
-        estimatedPounds,
-        specialInstructions: specialInstructions || undefined,
-        estimatedPrice,
-        promoCode: promoCode || undefined,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        statusHistory: [
-          { status: 'placed', timestamp: new Date().toISOString() },
-        ],
-      };
-
-      addOrder(newOrder);
-      notifyThen('Order placed!', "Your order has been placed — we'll assign a driver shortly.", () => router.back());
+      void placeOrderAndPay();
       return;
     }
     const nextIdx = stepIndex + 1;
     if (nextIdx < STEPS.length) {
       setCurrentStep(STEPS[nextIdx]);
     }
-  }, [currentStep, stepIndex, addresses, selectedAddressId, deliveryAddressId, selectedPickupSlot, selectedDeliverySlot, selectedServices, estimatedPounds, specialInstructions, estimatedPrice, promoCode, addOrder, router]);
+  }, [currentStep, stepIndex, placeOrderAndPay]);
 
   const handleBack = useCallback(() => {
     const prevIdx = stepIndex - 1;
@@ -528,7 +554,7 @@ export default function SchedulePickupScreen() {
           <View style={[styles.pricingRow, styles.pricingTotal]}>
             <Text style={styles.pricingTotalLabel}>Total</Text>
             <Text style={styles.pricingTotalValue}>
-              ${(estimatedPrice + 5.49).toFixed(2)}
+              ${(estimatedPrice + FEES).toFixed(2)}
             </Text>
           </View>
         </View>
@@ -569,15 +595,15 @@ export default function SchedulePickupScreen() {
         <TouchableOpacity
           style={[
             styles.nextBtn,
-            !canProceed && styles.nextBtnDisabled,
+            (!canProceed || placing) && styles.nextBtnDisabled,
             stepIndex === 0 && styles.nextBtnFull,
           ]}
           onPress={handleNext}
-          disabled={!canProceed}
+          disabled={!canProceed || placing}
         >
           <LinearGradient
             colors={
-              canProceed
+              canProceed && !placing
                 ? [Colors.primary, Colors.primaryLight]
                 : [Colors.textTertiary, Colors.textTertiary]
             }
@@ -586,8 +612,10 @@ export default function SchedulePickupScreen() {
             style={styles.nextBtnGradient}
           >
             <Text style={styles.nextBtnText}>
-              {currentStep === 'review'
-                ? `Place Order · $${(estimatedPrice + 5.49).toFixed(2)}`
+              {placing
+                ? 'Processing…'
+                : currentStep === 'review'
+                ? `Place Order · $${(estimatedPrice + FEES).toFixed(2)}`
                 : 'Continue'}
             </Text>
           </LinearGradient>
