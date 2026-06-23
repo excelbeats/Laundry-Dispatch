@@ -31,6 +31,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/hooks/useAppState';
+import { notifyThen } from '@/lib/dialog';
 import { mockServices, mockTimeSlots } from '@/mocks/data';
 import { ServiceType, TimeSlot, Order } from '@/types';
 
@@ -134,11 +135,7 @@ export default function SchedulePickupScreen() {
       };
 
       addOrder(newOrder);
-      Alert.alert(
-        'Order Placed! 🎉',
-        `Your order ${newOrder.id} has been placed. We'll assign a driver shortly.`,
-        [{ text: 'Great!', onPress: () => router.back() }]
-      );
+      notifyThen('Order placed!', "Your order has been placed — we'll assign a driver shortly.", () => router.back());
       return;
     }
     const nextIdx = stepIndex + 1;

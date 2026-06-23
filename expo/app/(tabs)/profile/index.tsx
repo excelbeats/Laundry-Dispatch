@@ -28,6 +28,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth';
+import { confirmAction } from '@/lib/dialog';
 
 interface MenuItem {
   icon: React.ComponentType<{ size: number; color: string }>;
@@ -204,12 +205,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() =>
-            Alert.alert('Log Out', 'Are you sure you want to log out?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Log Out', style: 'destructive', onPress: () => { void signOut(); } },
-            ])
-          }
+          onPress={() => confirmAction('Log Out', 'Are you sure you want to log out?', () => { void signOut(); }, 'Log Out')}
         >
           <LogOut size={18} color={Colors.error} />
           <Text style={styles.logoutText}>Log Out</Text>

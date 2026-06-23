@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Users, Truck, Package, DollarSign, AlertCircle, Shield } from 'lucide-react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Colors from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { confirmAction, notify } from '@/lib/dialog';
 import { ORDER_STATUS_CONFIG } from '@/mocks/data';
 import type { UserRole } from '@/types';
 
@@ -79,20 +79,17 @@ export default function AdminDashboardScreen() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'profiles'] }),
-    onError: (e: any) => Alert.alert('Could not change role', e?.message ?? 'Please try again.'),
+    onError: (e: any) => notify('Could not change role', e?.message ?? 'Please try again.'),
   });
 
   const changeRole = useCallback(
     (p: any, role: UserRole) => {
       if (p.role === role) return;
       if (p.id === userId) {
-        Alert.alert('Heads up', "You can't change your own role.");
+        notify('Heads up', "You can't change your own role.");
         return;
       }
-      Alert.alert('Change role', `Set ${p.name || p.email} to "${role}"?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Confirm', onPress: () => setRole.mutate({ id: p.id, role }) },
-      ]);
+      confirmAction('Change role', `Set ${p.name || p.email} to "${role}"?`, () => setRole.mutate({ id: p.id, role }));
     },
     [setRole, userId],
   );
