@@ -1,14 +1,12 @@
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   MapPin,
   Truck,
@@ -24,6 +22,9 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/hooks/useAppState';
+import { supabase } from '@/lib/supabase';
+import TrackMap from '@/components/TrackMap';
+import { distanceMiles, etaMinutes, geocode } from '@/lib/mapbox';
 import { ORDER_STATUS_CONFIG, mockDriver } from '@/mocks/data';
 
 const STATUS_STEPS = [
@@ -39,7 +40,8 @@ const STATUS_STEPS = [
 export default function TrackScreen() {
   const router = useRouter();
   const { orders } = useAppState();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [driverLoc, setDriverLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [destLoc, setDestLoc] = useState<{ lat: number; lng: number } | null>(null);
 
   const activeOrder = useMemo(
     () => orders.find(o => o.status !== 'delivered' && o.status !== 'cancelled'),
@@ -47,25 +49,50 @@ export default function TrackScreen() {
   );
 
   useEffect(() => {
-    if (activeOrder) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      pulse.start();
-      return () => pulse.stop();
-    }
-  }, [activeOrder, pulseAnim]);
+    const order = activeOrder;
+    if (!order) { setDriverLoc(null); setDestLoc(null); return; }
+    let cancelled = false;
+
+    (async () => {
+      const { data } = await supabase
+        .from('orders')
+        .select('driver_lat, driver_lng')
+        .eq('id', order.id)
+        .maybeSingle();
+      if (!cancelled && data?.driver_lat != null && data?.driver_lng != null) {
+        setDriverLoc({ lat: Number(data.driver_lat), lng: Number(data.driver_lng) });
+      }
+      const addr = order.deliveryAddress;
+      if (addr?.lat && addr?.lng) {
+        if (!cancelled) setDestLoc({ lat: addr.lat, lng: addr.lng });
+      } else if (addr) {
+        const g = await geocode([addr.street, addr.city, addr.state, addr.zip].filter(Boolean).join(', '));
+        if (!cancelled && g) setDestLoc(g);
+      }
+    })();
+
+    const channel = supabase
+      .channel(`track-order-${order.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` },
+        (payload) => {
+          const n = payload.new as { driver_lat?: number | null; driver_lng?: number | null };
+          if (n.driver_lat != null && n.driver_lng != null) {
+            setDriverLoc({ lat: Number(n.driver_lat), lng: Number(n.driver_lng) });
+          }
+        },
+      )
+      .subscribe();
+
+    return () => { cancelled = true; supabase.removeChannel(channel); };
+  }, [activeOrder]);
+
+  const trip = useMemo(() => {
+    if (!driverLoc || !destLoc) return null;
+    const miles = distanceMiles(driverLoc, destLoc);
+    return { miles, eta: etaMinutes(miles) };
+  }, [driverLoc, destLoc]);
 
   const currentStepIndex = useMemo(() => {
     if (!activeOrder) return -1;
@@ -112,44 +139,15 @@ export default function TrackScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.mapPlaceholder}>
-        <LinearGradient
-          colors={[Colors.primaryDark, Colors.primary, Colors.primaryLight]}
-          style={styles.mapGradient}
-        >
-          <View style={styles.mapContent}>
-            <Animated.View
-              style={[
-                styles.mapDriverDot,
-                { transform: [{ scale: pulseAnim }] },
-              ]}
-            >
-              <View style={styles.mapDriverDotInner}>
-                <Navigation size={16} color="#fff" />
-              </View>
-            </Animated.View>
-
-            <View style={styles.mapPickupPin}>
-              <MapPin size={18} color={Colors.accent} fill={Colors.accent} />
-              <Text style={styles.mapPinLabel}>Pickup</Text>
-            </View>
-
-            <View style={styles.mapDeliveryPin}>
-              <MapPin size={18} color={Colors.success} fill={Colors.success} />
-              <Text style={styles.mapPinLabel}>Delivery</Text>
-            </View>
-
-            <View style={styles.mapRoute} />
-
-            <View style={styles.etaCard}>
-              <Text style={styles.etaLabel}>Estimated</Text>
-              <Text style={styles.etaValue}>
-                {activeOrder.status === 'driver_en_route' ? '12 min' : '~4 hrs'}
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
-      </View>
+      <TrackMap driver={driverLoc} dest={destLoc} height={240} />
+      {trip && (
+        <View style={styles.liveEta}>
+          <Navigation size={16} color={Colors.primary} />
+          <Text style={styles.liveEtaText}>
+            Driver {trip.miles.toFixed(1)} mi away · ~{trip.eta} min
+          </Text>
+        </View>
+      )}
 
       <View style={styles.statusCard}>
         <View style={styles.statusCardHeader}>
@@ -283,6 +281,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 20,
   },
+  liveEta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginHorizontal: 16, marginTop: 10, backgroundColor: Colors.card, borderRadius: 12, paddingVertical: 10,
+  },
+  liveEtaText: { fontSize: 14, fontWeight: '700' as const, color: Colors.text },
   emptyContainer: {
     flex: 1,
     backgroundColor: Colors.background,

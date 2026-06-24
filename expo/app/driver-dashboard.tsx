@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,8 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppState } from '@/hooks/useAppState';
+import { supabase } from '@/lib/supabase';
+import * as Location from 'expo-location';
 import { confirmAction, notify } from '@/lib/dialog';
 import { mockServices, ORDER_STATUS_CONFIG } from '@/mocks/data';
 import type { Order, OrderStatus } from '@/types';
@@ -82,6 +84,41 @@ export default function DriverDashboardScreen() {
     () => orders.filter(o => o.driverId === userId && o.status !== 'delivered' && o.status !== 'cancelled'),
     [orders, userId],
   );
+
+  // While online with active jobs, stream live GPS to those orders so customers can track.
+  const activeKey = useMemo(() => active.map(o => o.id).join(','), [active]);
+  useEffect(() => {
+    const ids = activeKey ? activeKey.split(',') : [];
+    if (ids.length === 0 || !isOnline) return;
+    let sub: Location.LocationSubscription | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted' || cancelled) return;
+        sub = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.High, distanceInterval: 20, timeInterval: 6000 },
+          (loc) => {
+            const { latitude, longitude, heading } = loc.coords;
+            ids.forEach((id) => {
+              void supabase
+                .from('orders')
+                .update({
+                  driver_lat: latitude,
+                  driver_lng: longitude,
+                  driver_heading: heading ?? null,
+                  driver_loc_updated_at: new Date().toISOString(),
+                })
+                .eq('id', id);
+            });
+          },
+        );
+      } catch {
+        // location permission denied or unavailable — skip silently
+      }
+    })();
+    return () => { cancelled = true; sub?.remove(); };
+  }, [activeKey, isOnline]);
   const completed = useMemo(
     () => orders.filter(o => o.driverId === userId && o.status === 'delivered'),
     [orders, userId],
