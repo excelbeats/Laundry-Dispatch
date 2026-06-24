@@ -32,6 +32,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/hooks/useAppState';
+import { useAuth } from '@/hooks/useAuth';
 import { notify, notifyThen } from '@/lib/dialog';
 import { mockServices, mockTimeSlots } from '@/mocks/data';
 import { ServiceType, TimeSlot, Order } from '@/types';
@@ -46,6 +47,8 @@ const FEES = 5.49;
 export default function SchedulePickupScreen() {
   const router = useRouter();
   const { addresses, addOrderAsync, startCheckout } = useAppState();
+  const { isMember } = useAuth();
+  const fees = isMember ? 0 : FEES;
 
   const [currentStep, setCurrentStep] = useState<Step>('address');
   const [selectedAddressId, setSelectedAddressId] = useState<string>(
@@ -126,7 +129,7 @@ export default function SchedulePickupScreen() {
       deliverySlot: deliverySlot,
       estimatedPounds,
       specialInstructions: specialInstructions || undefined,
-      estimatedPrice: estimatedPrice + FEES,
+      estimatedPrice: estimatedPrice + fees,
       promoCode: promoCode || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -154,7 +157,7 @@ export default function SchedulePickupScreen() {
     } finally {
       setPlacing(false);
     }
-  }, [addresses, selectedAddressId, deliveryAddressId, selectedPickupSlot, selectedDeliverySlot, selectedServices, estimatedPounds, specialInstructions, estimatedPrice, promoCode, addOrderAsync, startCheckout, router]);
+  }, [addresses, selectedAddressId, deliveryAddressId, selectedPickupSlot, selectedDeliverySlot, selectedServices, estimatedPounds, specialInstructions, estimatedPrice, fees, promoCode, addOrderAsync, startCheckout, router]);
 
   const handleNext = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -545,16 +548,21 @@ export default function SchedulePickupScreen() {
           </View>
           <View style={styles.pricingRow}>
             <Text style={styles.pricingLabel}>Pickup fee</Text>
-            <Text style={styles.pricingValue}>$3.99</Text>
+            <Text style={[styles.pricingValue, isMember && { color: Colors.success, fontWeight: '700' as const }]}>{isMember ? 'FREE' : '$3.99'}</Text>
           </View>
           <View style={styles.pricingRow}>
             <Text style={styles.pricingLabel}>Service fee</Text>
-            <Text style={styles.pricingValue}>$1.50</Text>
+            <Text style={[styles.pricingValue, isMember && { color: Colors.success, fontWeight: '700' as const }]}>{isMember ? 'FREE' : '$1.50'}</Text>
           </View>
+          {isMember && (
+            <View style={styles.pricingRow}>
+              <Text style={{ fontSize: 12, color: Colors.success, fontWeight: '600' as const }}>✨ Member — fees waived</Text>
+            </View>
+          )}
           <View style={[styles.pricingRow, styles.pricingTotal]}>
             <Text style={styles.pricingTotalLabel}>Total</Text>
             <Text style={styles.pricingTotalValue}>
-              ${(estimatedPrice + FEES).toFixed(2)}
+              ${(estimatedPrice + fees).toFixed(2)}
             </Text>
           </View>
         </View>
@@ -615,7 +623,7 @@ export default function SchedulePickupScreen() {
               {placing
                 ? 'Processing…'
                 : currentStep === 'review'
-                ? `Place Order · $${(estimatedPrice + FEES).toFixed(2)}`
+                ? `Place Order · $${(estimatedPrice + fees).toFixed(2)}`
                 : 'Continue'}
             </Text>
           </LinearGradient>

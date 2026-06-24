@@ -8,7 +8,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -23,6 +23,7 @@ import {
   LogOut,
   Gift,
   Clock,
+  Crown,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -43,7 +44,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { orders, addresses } = useAppState();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, isMember } = useAuth();
   const userName = profile?.name || 'there';
 
   const completedOrders = orders.filter(o => o.status === 'delivered').length;
@@ -57,6 +58,13 @@ export default function ProfileScreen() {
   }, []);
 
   const accountItems: MenuItem[] = [
+    {
+      icon: Crown,
+      label: 'Membership',
+      subtitle: isMember ? 'Active member 🎉' : 'Free pickup + waived fees',
+      onPress: () => router.push('/membership' as Href),
+      color: Colors.accent,
+    },
     {
       icon: User,
       label: 'Personal Info',

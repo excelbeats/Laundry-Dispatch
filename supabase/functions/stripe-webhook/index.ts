@@ -36,6 +36,29 @@ Deno.serve(async (req) => {
     }
   }
 
+  if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+    const sub = event.data.object as Stripe.Subscription;
+    const userId = sub.metadata?.user_id;
+    if (userId) {
+      const active = sub.status === 'active' || sub.status === 'trialing';
+      await admin.from('profiles').update({
+        subscription_status: sub.status,
+        subscription_tier: active ? (sub.metadata?.tier ?? null) : null,
+        stripe_subscription_id: sub.id,
+        stripe_customer_id: typeof sub.customer === 'string' ? sub.customer : sub.customer.id,
+        subscription_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+      }).eq('id', userId);
+    }
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object as Stripe.Subscription;
+    const userId = sub.metadata?.user_id;
+    if (userId) {
+      await admin.from('profiles').update({ subscription_status: 'canceled', subscription_tier: null }).eq('id', userId);
+    }
+  }
+
   return new Response(JSON.stringify({ received: true }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },

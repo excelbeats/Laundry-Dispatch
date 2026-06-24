@@ -11,6 +11,9 @@ export interface Profile {
   phone: string;
   role: UserRole;
   avatar: string | null;
+  subscriptionTier: string | null;
+  subscriptionStatus: string;
+  subscriptionPeriodEnd: string | null;
 }
 
 interface SignUpParams {
@@ -28,14 +31,28 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const loadProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, email, phone, role, avatar')
+      .select('id, name, email, phone, role, avatar, subscription_tier, subscription_status, subscription_period_end')
       .eq('id', userId)
       .maybeSingle();
     if (error) {
       console.error('Failed to load profile:', error.message);
       return null;
     }
-    const p = (data as Profile | null) ?? null;
+    if (!data) {
+      setProfile(null);
+      return null;
+    }
+    const p: Profile = {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      role: data.role,
+      avatar: data.avatar,
+      subscriptionTier: data.subscription_tier ?? null,
+      subscriptionStatus: data.subscription_status ?? 'none',
+      subscriptionPeriodEnd: data.subscription_period_end ?? null,
+    };
     setProfile(p);
     return p;
   }, []);
@@ -96,6 +113,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       loading,
       isAuthenticated: !!session,
       role: profile?.role ?? null,
+      isMember: profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trialing',
       signIn,
       signUp,
       signOut,

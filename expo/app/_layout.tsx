@@ -66,6 +66,7 @@ function RootLayoutNav() {
       <Stack.Screen name="order-details" options={headerScreen("Order Details")} />
       <Stack.Screen name="order-tracking" options={headerScreen("Live Tracking")} />
       <Stack.Screen name="notifications" options={headerScreen("Notifications")} />
+      <Stack.Screen name="membership" options={headerScreen("Membership")} />
       <Stack.Screen name="driver-dashboard" options={headerScreen("Driver Dashboard")} />
       <Stack.Screen name="admin-dashboard" options={headerScreen("Admin Panel")} />
     </Stack>

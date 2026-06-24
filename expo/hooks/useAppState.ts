@@ -18,6 +18,7 @@ interface AppState {
   addOrder: (order: Order) => void;
   addOrderAsync: (order: Order) => Promise<string>;
   startCheckout: (orderId: string) => Promise<string | null>;
+  startSubscription: (tier: string) => Promise<string | null>;
   claimOrder: (orderId: string) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   markNotificationRead: (id: string) => void;
@@ -219,6 +220,11 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
     if (error) throw error;
     return ((data as { url?: string } | null)?.url) ?? null;
   }, []);
+  const startSubscription = useCallback(async (tier: string) => {
+    const { data, error } = await supabase.functions.invoke('create-subscription', { body: { tier } });
+    if (error) throw error;
+    return ((data as { url?: string } | null)?.url) ?? null;
+  }, []);
   const claimOrder = useCallback((orderId: string) => claimMutation.mutate(orderId), [claimMutation]);
   const updateOrderStatus = useCallback(
     (orderId: string, status: Order['status']) => updateStatusMutation.mutate({ orderId, status }),
@@ -249,6 +255,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       addOrder,
       addOrderAsync,
       startCheckout,
+      startSubscription,
       claimOrder,
       updateOrderStatus,
       markNotificationRead,
@@ -266,6 +273,7 @@ export const [AppStateProvider, useAppState] = createContextHook<AppState>(() =>
       addOrder,
       addOrderAsync,
       startCheckout,
+      startSubscription,
       claimOrder,
       updateOrderStatus,
       markNotificationRead,
