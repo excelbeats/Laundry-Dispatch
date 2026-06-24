@@ -8,11 +8,11 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/hooks/useAppState';
+import { notify } from '@/lib/dialog';
 import type { Address } from '@/types';
 
 export default function AddAddressScreen() {
@@ -28,7 +28,7 @@ export default function AddAddressScreen() {
 
   const onSave = useCallback(() => {
     if (!label || !street || !city || !stateField || !zip) {
-      Alert.alert('Missing info', 'Label, street, city, state, and ZIP are required.');
+      notify('Missing info', 'Label, street, city, state, and ZIP are required.');
       return;
     }
     const address: Address = {

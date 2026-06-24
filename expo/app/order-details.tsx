@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -19,12 +18,13 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/hooks/useAppState';
+import { confirmAction } from '@/lib/dialog';
 import { ORDER_STATUS_CONFIG, mockDriver, mockServices } from '@/mocks/data';
 
 export default function OrderDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { orders } = useAppState();
+  const { orders, updateOrderStatus } = useAppState();
 
   const order = useMemo(() => orders.find(o => o.id === id), [orders, id]);
 
@@ -262,7 +262,17 @@ export default function OrderDetailsScreen() {
       {isActive && (
         <TouchableOpacity
           style={styles.cancelBtn}
-          onPress={() => Alert.alert('Cancel Order', 'Are you sure you want to cancel this order?')}
+          onPress={() =>
+            confirmAction(
+              'Cancel Order',
+              'Are you sure you want to cancel this order?',
+              () => {
+                updateOrderStatus(order.id, 'cancelled');
+                router.back();
+              },
+              'Cancel Order',
+            )
+          }
         >
           <Text style={styles.cancelBtnText}>Cancel Order</Text>
         </TouchableOpacity>

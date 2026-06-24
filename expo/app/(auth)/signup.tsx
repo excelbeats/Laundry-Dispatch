@@ -9,13 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   ScrollView,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/useAuth';
+import { notify, notifyThen } from '@/lib/dialog';
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
@@ -29,26 +29,26 @@ export default function SignUpScreen() {
 
   const onSubmit = useCallback(async () => {
     if (!name || !email || !password) {
-      Alert.alert('Missing info', 'Name, email, and password are required.');
+      notify('Missing info', 'Name, email, and password are required.');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Weak password', 'Password must be at least 6 characters.');
+      notify('Weak password', 'Password must be at least 6 characters.');
       return;
     }
     setSubmitting(true);
     try {
       const { needsConfirmation } = await signUp({ name, email, phone, password });
       if (needsConfirmation) {
-        Alert.alert(
+        notifyThen(
           'Confirm your email',
           'We sent you a confirmation link. Confirm it, then log in.',
-          [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }],
+          () => router.replace('/(auth)/login'),
         );
       }
       // Otherwise the auth listener routes us in automatically.
     } catch (e) {
-      Alert.alert('Sign up failed', e instanceof Error ? e.message : 'Please try again.');
+      notify('Sign up failed', e instanceof Error ? e.message : 'Please try again.');
     } finally {
       setSubmitting(false);
     }

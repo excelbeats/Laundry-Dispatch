@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  Alert,
 } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,7 +28,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth';
-import { confirmAction } from '@/lib/dialog';
+import { confirmAction, notify } from '@/lib/dialog';
 
 interface MenuItem {
   icon: React.ComponentType<{ size: number; color: string }>;
@@ -69,7 +68,7 @@ export default function ProfileScreen() {
       icon: User,
       label: 'Personal Info',
       subtitle: 'Name, email, phone',
-      onPress: () => Alert.alert('Personal Info', 'Edit your profile details'),
+      onPress: () => notify('Personal Info', 'Edit your profile details'),
     },
     {
       icon: MapPin,
@@ -81,13 +80,13 @@ export default function ProfileScreen() {
       icon: CreditCard,
       label: 'Payment Methods',
       subtitle: 'Visa ****4242',
-      onPress: () => Alert.alert('Payments', 'Manage your payment methods'),
+      onPress: () => notify('Payments', 'Manage your payment methods'),
     },
     {
       icon: Clock,
       label: 'Recurring Schedules',
       subtitle: 'Weekly pickup preferences',
-      onPress: () => Alert.alert('Schedules', 'Set up recurring laundry pickups'),
+      onPress: () => notify('Schedules', 'Set up recurring laundry pickups'),
     },
   ];
 
@@ -101,23 +100,23 @@ export default function ProfileScreen() {
       icon: Gift,
       label: 'Promo Codes',
       subtitle: '1 active promo',
-      onPress: () => Alert.alert('Promos', 'Use code FRESH20 for 20% off!'),
+      onPress: () => notify('Promos', 'Use code FRESH20 for 20% off!'),
       badge: '1',
     },
     {
       icon: Star,
       label: 'Rate Us',
-      onPress: () => Alert.alert('Thanks!', 'We appreciate your feedback'),
+      onPress: () => notify('Thanks!', 'We appreciate your feedback'),
     },
     {
       icon: CircleHelp,
       label: 'Help & Support',
-      onPress: () => Alert.alert('Support', 'How can we help?'),
+      onPress: () => notify('Support', 'How can we help?'),
     },
     {
       icon: Shield,
       label: 'Privacy & Terms',
-      onPress: () => Alert.alert('Privacy', 'View our privacy policy'),
+      onPress: () => notify('Privacy', 'View our privacy policy'),
     },
   ];
 

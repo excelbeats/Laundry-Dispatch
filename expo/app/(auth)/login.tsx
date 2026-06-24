@@ -9,13 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/useAuth';
+import { notify } from '@/lib/dialog';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -26,14 +26,14 @@ export default function LoginScreen() {
 
   const onSubmit = useCallback(async () => {
     if (!email || !password) {
-      Alert.alert('Missing info', 'Enter your email and password.');
+      notify('Missing info', 'Enter your email and password.');
       return;
     }
     setSubmitting(true);
     try {
       await signIn(email, password);
     } catch (e) {
-      Alert.alert('Login failed', e instanceof Error ? e.message : 'Please try again.');
+      notify('Login failed', e instanceof Error ? e.message : 'Please try again.');
     } finally {
       setSubmitting(false);
     }
