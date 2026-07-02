@@ -94,7 +94,7 @@ export default function ResetPasswordScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: Colors.background },
-  container: { flex: 1, paddingHorizontal: 24 },
+  container: { flex: 1, width: '100%', maxWidth: 460, alignSelf: 'center' as const, paddingHorizontal: 24 },
   title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, marginBottom: 8 },
   subtitle: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20, marginBottom: 24 },
   label: { fontSize: 13, fontWeight: '600' as const, color: Colors.textSecondary, marginBottom: 6 },

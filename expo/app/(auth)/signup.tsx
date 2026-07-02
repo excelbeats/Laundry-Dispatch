@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   brand: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, letterSpacing: 0.3 },
   brandAccent: { color: Colors.primary },
   subtitle: { fontSize: 16, color: Colors.textSecondary, marginTop: 6, marginBottom: 20 },
-  form: { width: '100%' },
+  form: { width: '100%', maxWidth: 420, alignSelf: 'center' as const },
   label: { fontSize: 14, fontWeight: '600' as const, color: Colors.textSecondary, marginBottom: 8, marginTop: 12 },
   input: {
     backgroundColor: Colors.surfaceAlt,
