@@ -32,7 +32,9 @@ function RootLayoutNav() {
     const inAuthGroup = seg0 === "(auth)";
 
     if (!isAuthenticated) {
-      if (!inAuthGroup) router.replace("/(auth)/login");
+      const seg = seg0 as string;
+      const isPublic = inAuthGroup || seg === "forgot-password" || seg === "reset-password";
+      if (!isPublic) router.replace("/(auth)/login");
       return;
     }
 
@@ -67,6 +69,8 @@ function RootLayoutNav() {
       <Stack.Screen name="order-tracking" options={headerScreen("Live Tracking")} />
       <Stack.Screen name="notifications" options={headerScreen("Notifications")} />
       <Stack.Screen name="membership" options={headerScreen("Membership")} />
+      <Stack.Screen name="forgot-password" options={headerScreen("Reset Password")} />
+      <Stack.Screen name="reset-password" options={headerScreen("New Password")} />
       <Stack.Screen name="driver-dashboard" options={headerScreen("Driver Dashboard")} />
       <Stack.Screen name="admin-dashboard" options={headerScreen("Admin Panel")} />
     </Stack>

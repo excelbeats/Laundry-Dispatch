@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/hooks/useAuth';
@@ -76,6 +76,10 @@ export default function LoginScreen() {
             testID="login-password"
           />
 
+          <Link href={'/forgot-password' as Href} style={styles.forgotLink}>
+            Forgot password?
+          </Link>
+
           <TouchableOpacity
             style={[styles.button, submitting && styles.buttonDisabled]}
             onPress={onSubmit}
@@ -106,6 +110,7 @@ const styles = StyleSheet.create({
   brandAccent: { color: Colors.primary },
   subtitle: { fontSize: 16, color: Colors.textSecondary, marginTop: 6, marginBottom: 28 },
   form: { width: '100%' },
+  forgotLink: { alignSelf: 'flex-end' as const, marginTop: 12, color: Colors.primary, fontSize: 13, fontWeight: '600' as const },
   label: { fontSize: 14, fontWeight: '600' as const, color: Colors.textSecondary, marginBottom: 8, marginTop: 14 },
   input: {
     backgroundColor: Colors.surfaceAlt,
